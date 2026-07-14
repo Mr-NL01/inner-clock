@@ -207,7 +207,6 @@ let animatedRollSeq = 0;
 
 function renderNormalTurn(state, onSettled) {
   const turn = state.turn;
-  els.game.playerLabel.textContent = nameWithRidder(state, state.currentPlayerIndex);
 
   if (state.turnSeq !== animatedTurnSeq) {
     animatedTurnSeq = state.turnSeq;
@@ -218,6 +217,11 @@ function renderNormalTurn(state, onSettled) {
   const isHeldIndex = (i) => Boolean(turn.hold && turn.hold.dieIndex === i);
 
   const revealSettled = () => {
+    // Ridder is decided by the engine the instant a throw resolves, but the
+    // ⚔️ must not appear until the dice have visually landed — otherwise a
+    // throw that just crowns a new Ridder spoils its own result while still
+    // tumbling. Only add the suffix here, in the post-animation reveal.
+    els.game.playerLabel.textContent = nameWithRidder(state, state.currentPlayerIndex);
     for (let i = 0; i < 2; i++) {
       renderDie(dieEls[i], turn.dice ? turn.dice[i] : null, isHeldIndex(i));
     }
@@ -232,6 +236,9 @@ function renderNormalTurn(state, onSettled) {
     return;
   }
   animatedRollSeq = turn.rollSeq;
+
+  // Plain name while the dice are tumbling — no title suffix until reveal.
+  els.game.playerLabel.textContent = displayName(state.names, state.currentPlayerIndex);
 
   // The held die (if any) is static and shows immediately; only the
   // rolled index/indices tumble. A die that's being rolled can't

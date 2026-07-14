@@ -1,4 +1,4 @@
-import { PLAYER_COUNT, NAME_MAX_LENGTH, RANK_ORDER } from "./config.js";
+import { PLAYER_COUNT, NAME_MAX_LENGTH, RANK_ORDER, HOLDABLE_VALUES } from "./config.js";
 
 // Game state machine for Mexen. NO DOM ACCESS — this file must be testable
 // in plain Node/JS. Same subscribe/emit pattern as Inner Clock's engine.
@@ -62,9 +62,10 @@ export function rollDie(rng = Math.random) {
 
 // Runs a single player's turn: mandatory throws up to `throwLimit`, the 31
 // joker (doesn't count, forces a rethrow), Mex (ends the turn instantly),
-// and the holding-a-1 rule including the double-1 swap case. Round-level
-// concerns (whose turn is next, Ridder, Mex count) live outside this — a
-// turn only knows its own throw limit and its own dice.
+// and the holding rule (HOLDABLE_VALUES — 1 or 2) including the
+// double-held-value swap case. Round-level concerns (whose turn is next,
+// Ridder, Mex count) live outside this — a turn only knows its own throw
+// limit and its own dice.
 export function createTurn(throwLimit = 3, rng = Math.random) {
   let state = {
     dice: null, // [d1, d2] of the two physical dice; index is stable across rerolls
@@ -125,15 +126,19 @@ export function createTurn(throwLimit = 3, rng = Math.random) {
 
     if (state.hold) {
       const freeIndex = 1 - state.hold.dieIndex;
-      if (dice[freeIndex] !== 1) {
-        state.hold = null; // rethrow showed a real value — pick up both dice, hold is over
+      const heldValue = dice[state.hold.dieIndex]; // the held die's own value never changes while held
+      if (dice[freeIndex] !== heldValue) {
+        state.hold = null; // rethrow didn't match — pick up both dice, hold is over
       }
-      // else: double ones — still holding; swapHeldDie() may re-point which physical die is held.
+      // else: a double of the held value — still holding; swapHeldDie() may re-point which
+      // physical die is held.
     } else if (!state.holdUsed && !score.isMex) {
       const throwsRemain = state.throwsTaken < state.throwLimit;
-      const onesCount = dice.filter((d) => d === 1).length;
-      if (onesCount === 1 && throwsRemain) {
-        state.hold = { dieIndex: dice[0] === 1 ? 0 : 1 };
+      // At most one of HOLDABLE_VALUES can match "exactly one" at a time: a 1-and-2 throw is
+      // always Mex (excluded above), so there's no ambiguity in which value to hold.
+      const holdableValue = HOLDABLE_VALUES.find((v) => dice.filter((d) => d === v).length === 1);
+      if (holdableValue !== undefined && throwsRemain) {
+        state.hold = { dieIndex: dice[0] === holdableValue ? 0 : 1 };
         state.holdUsed = true;
       }
     }
@@ -150,14 +155,14 @@ export function createTurn(throwLimit = 3, rng = Math.random) {
     return snapshot();
   }
 
-  // Only meaningful right after a hold-rethrow lands on a second 1 (see
-  // scoreThrow().is100 while holding). Re-points which physical die is
-  // "held" going forward; purely cosmetic, never changes the score. No-op
-  // otherwise.
+  // Only meaningful right after a hold-rethrow lands on a second copy of
+  // the held value (double ones, or double twos). Re-points which physical
+  // die is "held" going forward; purely cosmetic, never changes the score.
+  // No-op otherwise.
   function swapHeldDie() {
     if (state.isDone || !state.hold) return snapshot();
     const freeIndex = 1 - state.hold.dieIndex;
-    if (state.dice[freeIndex] !== 1) return snapshot();
+    if (state.dice[freeIndex] !== state.dice[state.hold.dieIndex]) return snapshot();
     state.hold = { dieIndex: freeIndex };
     return snapshot();
   }

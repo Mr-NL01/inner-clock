@@ -6,6 +6,12 @@ export const PLAYER_COUNT = {
 
 export const NAME_MAX_LENGTH = 20;
 
+// Values a lone die may be held on between throws (the "hunt" for Mex/a
+// double), per the holding rule in engine.js's createTurn(). A throw
+// showing exactly one of these, with throws remaining, forces that die to
+// stay on the table.
+export const HOLDABLE_VALUES = [1, 2];
+
 // Ranking order, highest to lowest. A throw's code is (higher die * 10 +
 // lower die), e.g. 6 & 2 = 62. 31 is deliberately absent: it's a joker,
 // never a valid final score.
