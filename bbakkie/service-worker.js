@@ -1,14 +1,15 @@
-const CACHE_NAME = "bbakkie-v6";
+const CACHE_NAME = "bbakkie-v7";
 
 const ASSETS = [
   "./",
   "index.html",
+  "css/core.css",
   "inner-clock.html",
-  "css/styles.css",
-  "js/config.js",
-  "js/engine.js",
-  "js/ui.js",
-  "js/main.js",
+  "css/inner-clock.css",
+  "js/inner-clock/config.js",
+  "js/inner-clock/engine.js",
+  "js/inner-clock/ui.js",
+  "js/inner-clock/main.js",
   "mexen.html",
   "css/mexen.css",
   "js/mexen/config.js",
