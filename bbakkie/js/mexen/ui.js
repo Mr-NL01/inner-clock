@@ -201,9 +201,14 @@ function tumbleDice(entries, durationMs, onAllDone) {
 // Tracks which turn instance (engine's turnSeq) and roll (rollSeq) have
 // already been animated, so a re-render that isn't a fresh throw (e.g. the
 // doubles popup being dismissed) just paints the settled state instead of
-// tumbling again.
+// tumbling again. ridderBeforeRoll tracks who held the Ridder title just
+// before the most recent roll, so the ⚔️ spoiler-delay below only applies
+// to a roll that might actually crown someone new — a player who was
+// already Ridder going into their turn keeps the title visible throughout,
+// tumble included, since there's nothing left for that roll to spoil.
 let animatedTurnSeq = null;
 let animatedRollSeq = 0;
+let ridderBeforeRoll = null;
 
 function renderNormalTurn(state, onSettled) {
   const turn = state.turn;
@@ -211,22 +216,25 @@ function renderNormalTurn(state, onSettled) {
   if (state.turnSeq !== animatedTurnSeq) {
     animatedTurnSeq = state.turnSeq;
     animatedRollSeq = 0;
+    ridderBeforeRoll = state.ridder; // fresh turn: nothing thrown yet this turn
   }
 
   const dieEls = [els.game.die0, els.game.die1];
   const isHeldIndex = (i) => Boolean(turn.hold && turn.hold.dieIndex === i);
+  const alreadyRidderGoingIn = ridderBeforeRoll === state.currentPlayerIndex;
 
   const revealSettled = () => {
-    // Ridder is decided by the engine the instant a throw resolves, but the
-    // ⚔️ must not appear until the dice have visually landed — otherwise a
-    // throw that just crowns a new Ridder spoils its own result while still
-    // tumbling. Only add the suffix here, in the post-animation reveal.
+    // Ridder is decided by the engine the instant a throw resolves, but for
+    // a player who wasn't already Ridder, the ⚔️ must not appear until the
+    // dice have visually landed — otherwise a throw that just crowns a new
+    // Ridder spoils its own result while still tumbling.
     els.game.playerLabel.textContent = nameWithRidder(state, state.currentPlayerIndex);
     for (let i = 0; i < 2; i++) {
       renderDie(dieEls[i], turn.dice ? turn.dice[i] : null, isHeldIndex(i));
     }
     els.game.scoreLabel.textContent = scoreDisplayText(turn);
     els.game.throwButton.classList.toggle("invisible", !(!state.popup && !turn.isDone));
+    ridderBeforeRoll = state.ridder; // this roll's outcome is the baseline for the next one
     onSettled();
   };
 
@@ -237,8 +245,13 @@ function renderNormalTurn(state, onSettled) {
   }
   animatedRollSeq = turn.rollSeq;
 
-  // Plain name while the dice are tumbling — no title suffix until reveal.
-  els.game.playerLabel.textContent = displayName(state.names, state.currentPlayerIndex);
+  // Already Ridder going into this roll: keep the title showing, even while
+  // the dice tumble — nothing new is being revealed. Otherwise: plain name
+  // while tumbling, so a throw that's about to crown a new Ridder doesn't
+  // spoil its own result before the dice land.
+  els.game.playerLabel.textContent = alreadyRidderGoingIn
+    ? nameWithRidder(state, state.currentPlayerIndex)
+    : displayName(state.names, state.currentPlayerIndex);
 
   // The held die (if any) is static and shows immediately; only the
   // rolled index/indices tumble. A die that's being rolled can't

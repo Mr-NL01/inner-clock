@@ -63,6 +63,26 @@ body {
   display: flex;
 }
 
+/* Home link — top-left icon on each game's HOME screen, back to the BBakkie
+   landing page. Padding + negative margin grows the tap target without
+   shifting the icon's visual position. */
+
+.home-link {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  display: flex;
+  padding: 8px;
+  margin: -8px;
+  color: var(--muted);
+  z-index: 10;
+}
+
+.home-icon {
+  width: 28px;
+  height: 28px;
+}
+
 /* LANDING */
 
 .landing-content {
