@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#111318" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111318" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Dertigen" />
+  <title>Dertigen</title>
+  <link rel="stylesheet" href="css/core.css" />
+  <link rel="stylesheet" href="css/dertigen.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+</head>
+<body>
+
+  <div class="safe-area-cover safe-area-top" aria-hidden="true"></div>
+  <div class="safe-area-cover safe-area-bottom" aria-hidden="true"></div>
+
+  <!-- Permanent stop button on all in-game screens (hidden on HOME/NAMES,
+       where the home icon / nothing applies instead). -->
+  <button type="button" id="stop-btn" class="stop-btn hidden" aria-label="Stop menu">🛑</button>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen">
+    <a href="index.html" class="home-link" aria-label="Back to BBakkie">
+      <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5,9 L10,3.5 Q12,1.5 14,3.5 L19,9 Z" fill="currentColor" />
+        <rect x="5" y="9" width="14" height="11" rx="3" fill="currentColor" />
+        <circle cx="12" cy="15.5" r="2.5" fill="var(--bg)" />
+        <rect x="9.5" y="15.5" width="5" height="6" fill="var(--bg)" />
+      </svg>
+    </a>
+    <div class="home-content">
+      <h1 class="title">Dertigen</h1>
+
+      <div class="setting-block">
+        <span class="setting-label">Players</span>
+        <div class="stepper">
+          <button type="button" id="player-minus" class="stepper-btn">&minus;</button>
+          <span id="player-count" class="stepper-value">2</span>
+          <button type="button" id="player-plus" class="stepper-btn">+</button>
+        </div>
+      </div>
+
+      <button type="button" id="home-start" class="btn btn-primary btn-large">Start</button>
+    </div>
+  </section>
+
+  <!-- NAMES -->
+  <section id="screen-names" class="screen">
+    <div class="names-content">
+      <h2 class="names-title">Players</h2>
+      <table id="names-table">
+        <tbody></tbody>
+      </table>
+      <button type="button" id="names-start" class="btn btn-primary btn-large">Start</button>
+    </div>
+  </section>
+
+  <!-- DRINK -->
+  <section id="screen-drink" class="screen">
+    <div class="drink-content">
+      <div id="drink-player" class="turn-player"></div>
+      <div id="drink-sips" class="drink-sips"></div>
+      <div class="drink-counter">
+        <button type="button" id="drink-minus" class="stepper-btn">&minus;</button>
+        <span id="drink-count" class="drink-count">0</span>
+        <button type="button" id="drink-plus" class="stepper-btn">+</button>
+        <button type="button" id="drink-beer" class="stepper-btn beer-btn">🍺</button>
+      </div>
+      <button type="button" id="drink-confirm" class="btn btn-primary btn-large">Drink</button>
+    </div>
+  </section>
+
+  <!-- DICE_TURN -->
+  <section id="screen-dice" class="screen">
+    <div class="dice-content">
+      <div id="dice-player" class="turn-player"></div>
+      <div id="dice-total" class="dice-total"></div>
+      <div id="dice-aside" class="aside-row"></div>
+      <div id="dice-area" class="throw-area"></div>
+      <div class="dice-actions">
+        <button type="button" id="dice-throw" class="btn-gooien">Gooien</button>
+        <button type="button" id="dice-continue" class="btn btn-primary btn-large invisible" disabled>Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HUNT -->
+  <section id="screen-hunt" class="screen">
+    <div class="dice-content">
+      <div id="hunt-player" class="turn-player"></div>
+      <div id="hunt-target" class="hunt-target"></div>
+      <div id="hunt-aside" class="aside-row"></div>
+      <div id="hunt-area" class="throw-area"></div>
+      <div id="hunt-points" class="hunt-points"></div>
+      <div class="dice-actions">
+        <button type="button" id="hunt-throw" class="btn-gooien">Gooien</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOREBOARD -->
+  <section id="screen-scoreboard" class="screen">
+    <div class="board-content">
+      <h2 class="board-title">Scoreboard</h2>
+      <table id="score-table">
+        <thead>
+          <tr><th>Player</th><th>Sips</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button type="button" id="board-continue" class="btn btn-primary btn-large">Continue</button>
+    </div>
+  </section>
+
+  <!-- Dive announcement -->
+  <div id="dive-overlay" class="modal-overlay">
+    <div class="modal-box">
+      <p class="modal-emoji">🤿</p>
+      <h3 class="modal-title">Successful dive!!!</h3>
+      <p class="modal-message">All amounts are doubled</p>
+      <button type="button" id="dive-continue" class="btn btn-primary btn-large">Continue</button>
+    </div>
+  </div>
+
+  <!-- Joker — auto-dismissed after 0.7 s, no button -->
+  <div id="joker-overlay" class="modal-overlay joker-overlay">
+    <div class="joker-card">🃏</div>
+  </div>
+
+  <!-- Stop menu -->
+  <div id="stop-overlay" class="modal-overlay">
+    <div class="modal-box">
+      <button type="button" id="stop-quit-game" class="btn btn-danger btn-large">Quit whole game</button>
+      <button type="button" id="stop-quit-player" class="btn btn-warning btn-large">Current player quits</button>
+      <button type="button" id="stop-continue" class="btn btn-primary btn-large">Continue</button>
+    </div>
+  </div>
+
+  <!-- Stop confirmation -->
+  <div id="stop-confirm-overlay" class="modal-overlay">
+    <div class="modal-box">
+      <h3 class="modal-title">Are you sure?</h3>
+      <p class="modal-message">This action can't be undone</p>
+      <div class="modal-actions">
+        <button type="button" id="stop-confirm-yes" class="btn btn-danger">Yes</button>
+        <button type="button" id="stop-confirm-no" class="btn btn-secondary">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/dertigen/main.js"></script>
+</body>
+</html>

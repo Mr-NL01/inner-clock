@@ -1,0 +1,475 @@
+/* Dertigen-specific styles. Deliberately self-contained: the names table,
+   modals, and danger/secondary buttons are COPIED from mexen.css rather
+   than shared — the games stay independently editable (Bram's ruling). */
+
+:root {
+  --warning: #e67e22; /* "current player quits" — between green and red */
+  --die-face: #f2f3f5;
+  --die-pip: #16181d;
+}
+
+/* Stop button — permanent top-left on all in-game screens */
+
+.stop-btn {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 1500;
+  background: none;
+  border: none;
+  font-size: 1.7rem;
+  line-height: 1;
+  padding: 8px;
+  margin: -8px;
+  cursor: pointer;
+}
+
+.stop-btn.hidden {
+  display: none;
+}
+
+/* NAMES (copied from mexen.css) */
+
+.names-content {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.names-title {
+  text-align: center;
+  margin: 0;
+}
+
+#names-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--text);
+}
+
+#names-table td {
+  border: 1px solid var(--text);
+  padding: 10px 12px;
+}
+
+#names-table td:first-child {
+  color: var(--muted);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+#names-table input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  /* Exception to the app-wide user-select:none — typing needs a real caret. */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* DRINK */
+
+.drink-content {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.turn-player {
+  font-size: 2.2rem;
+  font-weight: 700;
+  max-width: 92vw;
+  text-align: center;
+  word-break: break-word;
+}
+
+.drink-sips {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.drink-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.drink-count {
+  font-size: 2rem;
+  font-weight: 700;
+  min-width: 2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.beer-btn {
+  font-size: 1.3rem;
+}
+
+/* DICE_TURN / HUNT shared layout */
+
+.dice-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+/* Running set-aside total under the player name */
+
+.dice-total {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Set-aside row: 6 small slots, dashed while empty */
+
+.aside-row {
+  --aside-size: min(46px, calc((100vw - 48px - 30px) / 6));
+  display: flex;
+  gap: 6px;
+  min-height: var(--aside-size);
+}
+
+.aside-row .die {
+  width: var(--aside-size);
+  height: var(--aside-size);
+  border-radius: 18%;
+}
+
+/* Throw area: up to 6 dice in one row */
+
+.throw-area {
+  --die-size: min(64px, calc((100vw - 48px - 40px) / 6));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--die-size) + 14px);
+}
+
+.throw-area .die {
+  width: var(--die-size);
+  height: var(--die-size);
+}
+
+/* Pip dice — white face, dark pips, Google-dice-widget style */
+
+/* NOTE: no percentage padding/gap here — % padding resolves against the
+   PARENT's width, which blew the dice up and crushed the pips to zero.
+   Instead the 3x3 grid spans the whole face and each pip is a fraction of
+   its cell, so everything scales with the die's own size. */
+.die {
+  border-radius: 16%;
+  background: var(--die-face);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+  cursor: pointer;
+}
+
+.pip {
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.pip.on {
+  background: var(--die-pip);
+}
+
+.die.empty {
+  background: transparent;
+  border: 2px dashed var(--border);
+  box-shadow: none;
+  cursor: default;
+}
+
+.die.empty .pip {
+  background: transparent;
+}
+
+/* Forced-pick highlighting: tapping one die lights up every die of that value */
+
+.die.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  transform: translateY(-4px);
+}
+
+/* Hunt: matched dice glow before flying to the set-aside row */
+
+.die.matched {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.7);
+}
+
+/* Dead hunt throw: nothing matched, the dice fade */
+
+.die.dead {
+  opacity: 0.4;
+  transition: opacity 0.35s ease;
+}
+
+.die.picked-away {
+  visibility: hidden;
+}
+
+/* Roll animation: tumble jitter (CSS) + face cycling (JS, decelerating).
+   Per-die duration/delay are randomized inline so the dice desync. */
+
+@keyframes die-tumble {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  15%  { transform: translate(-5px, 3px) rotate(-14deg); }
+  30%  { transform: translate(4px, -4px) rotate(11deg); }
+  45%  { transform: translate(-3px, -3px) rotate(-8deg); }
+  60%  { transform: translate(4px, 3px) rotate(13deg); }
+  75%  { transform: translate(-4px, 2px) rotate(-9deg); }
+  90%  { transform: translate(2px, -2px) rotate(5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.die.rolling {
+  animation: die-tumble 0.9s ease-in-out infinite;
+}
+
+@keyframes die-settle {
+  0%   { transform: scale(1.16); }
+  55%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+.die.settled {
+  animation: die-settle 0.22s ease-out;
+}
+
+/* Picked/hunted dice flying to the set-aside row (FLIP clones) */
+
+.fly-clone {
+  position: fixed;
+  z-index: 3000;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: top left;
+  transition: transform 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+@keyframes slot-pop {
+  0%   { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.die.slot-pop {
+  animation: slot-pop 0.18s ease-out;
+}
+
+/* Buttons under the dice. min-height reserves the space so the layout
+   doesn't jump while buttons toggle between visible and .invisible. */
+
+.dice-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 112px;
+}
+
+.btn-gooien {
+  width: min(340px, calc(100vw - 48px));
+  height: 96px;
+  border-radius: 24px;
+  border: none;
+  background: var(--accent);
+  color: #06210f;
+  font-size: 1.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-gooien.invisible,
+.dice-actions .btn.invisible {
+  visibility: hidden;
+}
+
+/* HUNT extras */
+
+.hunt-target {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@keyframes level-flash {
+  0%, 100% { color: var(--muted); transform: scale(1); }
+  35%      { color: var(--accent); transform: scale(1.18); }
+}
+
+.hunt-target.level-up {
+  animation: level-flash 0.6s ease;
+}
+
+.hunt-points {
+  min-height: 1.9rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* SCOREBOARD */
+
+.board-content {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.board-title {
+  text-align: center;
+  margin: 0;
+}
+
+#score-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#score-table th,
+#score-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+#score-table th {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+#score-table tr:last-child td {
+  border-bottom: none;
+}
+
+#score-table td:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* Modals (copied from mexen.css) + Dertigen extras */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 2000;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.modal-message {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.modal-emoji {
+  margin: 0;
+  font-size: 3.2rem;
+  line-height: 1;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #2a0c08;
+}
+
+.btn-secondary {
+  background: var(--border);
+  color: var(--text);
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: #2b1503;
+}
+
+/* Joker popup — darker backdrop, one huge card, no button */
+
+.joker-overlay {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+@keyframes joker-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.joker-card {
+  font-size: 7rem;
+  line-height: 1;
+  animation: joker-pop 0.25s ease-out;
+}

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dertigen UI smoke test</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 8px; }
+    #results { white-space: pre-wrap; font-size: 13px; }
+    iframe { border: 1px solid #444; }
+  </style>
+</head>
+<body>
+<!-- Drives the real dertigen.html in an iframe with pointer events, then
+     asserts pip visibility, die sizing, and row centering. Run headless:
+     msedge --headless --dump-dom --virtual-time-budget=25000 <this url>
+     and grep the <pre id="results"> block. -->
+<pre id="results">RUNNING</pre>
+<iframe id="game" src="../dertigen.html" width="430" height="900"></iframe>
+
+<script>
+  const lines = [];
+  let failures = 0;
+
+  function report(ok, label, detail) {
+    if (!ok) failures += 1;
+    lines.push(`${ok ? "ok  " : "FAIL"} - ${label}${detail ? ` (${detail})` : ""}`);
+  }
+
+  function finish(note) {
+    if (note) lines.push(note);
+    lines.push("");
+    lines.push(failures === 0 ? "SMOKE RESULT: ALL PASS" : `SMOKE RESULT: ${failures} FAILURES`);
+    document.getElementById("results").textContent = lines.join("\n");
+  }
+
+  function tap(doc, el) {
+    el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+  }
+
+  function wait(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  const frame = document.getElementById("game");
+  frame.addEventListener("load", async () => {
+    try {
+      const doc = frame.contentDocument;
+      const win = frame.contentWindow;
+
+      // HOME -> NAMES -> game
+      tap(doc, doc.getElementById("home-start"));
+      await wait(100);
+      report(doc.getElementById("screen-names").classList.contains("active"), "NAMES screen shown");
+      tap(doc, doc.getElementById("names-start"));
+      await wait(100);
+      report(doc.getElementById("screen-dice").classList.contains("active"), "DICE_TURN shown (0 sips skips DRINK)");
+
+      report(doc.getElementById("dice-total").textContent === "Total: 0", "set-aside total starts at 0");
+
+      // Opening throw
+      tap(doc, doc.getElementById("dice-throw"));
+      await wait(2200); // tumble is ~1s; leave slack
+
+      const area = doc.getElementById("dice-area");
+      const dice = Array.from(area.querySelectorAll(".die"));
+      report(dice.length === 6, "six dice in the throw area", `got ${dice.length}`);
+
+      // Pip visibility: every die shows the right number of lit pips, each
+      // with a real size and a non-transparent colour.
+      let pipsOk = dice.length > 0;
+      let pipDetail = "";
+      dice.forEach((die, i) => {
+        const v = Number(die.dataset.value);
+        const on = die.querySelectorAll(".pip.on");
+        if (on.length !== v) {
+          pipsOk = false;
+          pipDetail = `die ${i}: value ${v} but ${on.length} lit pips`;
+          return;
+        }
+        const cs = win.getComputedStyle(on[0]);
+        const w = on[0].getBoundingClientRect().width;
+        if (w < 4) {
+          pipsOk = false;
+          pipDetail = `die ${i}: pip width ${w.toFixed(1)}px`;
+        }
+        if (cs.backgroundColor === "rgba(0, 0, 0, 0)" || cs.backgroundColor === "transparent") {
+          pipsOk = false;
+          pipDetail = `die ${i}: pip background ${cs.backgroundColor}`;
+        }
+      });
+      report(pipsOk, "pips visible and matching each die's value", pipDetail);
+
+      // Die sizing: close to the configured size, square.
+      const rect0 = dice[0].getBoundingClientRect();
+      report(
+        rect0.width >= 40 && rect0.width <= 72 && Math.abs(rect0.width - rect0.height) < 1.5,
+        "die size sane and square",
+        `${rect0.width.toFixed(1)}x${rect0.height.toFixed(1)}`
+      );
+
+      // Centering: aside row and throw area share the same centre as the screen.
+      const aside = doc.getElementById("dice-aside");
+      const centre = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.left + r.width / 2;
+      };
+      const screenCentre = doc.getElementById("screen-dice").getBoundingClientRect().width / 2;
+      report(Math.abs(centre(aside) - screenCentre) < 2, "aside row centred", `${centre(aside).toFixed(1)} vs ${screenCentre.toFixed(1)}`);
+      report(Math.abs(centre(area) - screenCentre) < 2, "throw area centred", `${centre(area).toFixed(1)} vs ${screenCentre.toFixed(1)}`);
+
+      // Aside slots: 6 dashed empties, none overflowing the row.
+      const slots = Array.from(aside.querySelectorAll(".die"));
+      report(slots.length === 6, "six aside slots", `got ${slots.length}`);
+      const slotW = slots[0].getBoundingClientRect().width;
+      report(slotW >= 30 && slotW <= 50, "aside slot size sane", `${slotW.toFixed(1)}px`);
+
+      // Forced pick: tap one die, every die of that value highlights.
+      tap(doc, dice[0]);
+      await wait(100);
+      const v = Number(dice[0].dataset.value);
+      const sameValue = dice.filter((d) => Number(d.dataset.value) === v);
+      const selected = dice.filter((d) => d.classList.contains("selected"));
+      report(
+        selected.length === sameValue.length && selected.every((d) => Number(d.dataset.value) === v),
+        "tapping one die highlights ALL dice of that value",
+        `value ${v}: ${selected.length}/${sameValue.length} highlighted`
+      );
+
+      // Confirm the pick: dice fly to the aside row, then the next throw
+      // comes automatically and tumbles.
+      const continueBtn = doc.getElementById("dice-continue");
+      report(!continueBtn.disabled && !continueBtn.classList.contains("invisible"), "Continue enabled after selection");
+      tap(doc, continueBtn);
+      await wait(2600); // fly (450ms) + beat (250ms) + tumble (~1s) + slack
+
+      const filled = Array.from(aside.querySelectorAll(".die")).filter((d) => !d.classList.contains("empty"));
+      report(filled.length === sameValue.length, "picked dice landed in the aside row", `${filled.length} filled`);
+      const filledOk = filled.every((d) => {
+        const fv = Number(d.dataset.value);
+        return fv === v && d.querySelectorAll(".pip.on").length === fv;
+      });
+      report(filledOk, "aside dice show the picked value with pips");
+
+      const dice2 = Array.from(area.querySelectorAll(".die"));
+      report(dice2.length === 6 - sameValue.length, "next throw came automatically with the remaining dice", `${dice2.length} dice`);
+
+      const expectedTotal = v * sameValue.length;
+      report(
+        doc.getElementById("dice-total").textContent === `Total: ${expectedTotal}`,
+        "set-aside total updated after the pick",
+        doc.getElementById("dice-total").textContent
+      );
+
+      finish();
+    } catch (err) {
+      report(false, "unhandled error", err.message);
+      finish(err.stack);
+    }
+  });
+</script>
+</body>
+</html>

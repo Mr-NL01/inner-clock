@@ -1,4 +1,4 @@
-const CACHE_NAME = "bbakkie-v7";
+const CACHE_NAME = "bbakkie-v10";
 
 const ASSETS = [
   "./",
@@ -16,6 +16,12 @@ const ASSETS = [
   "js/mexen/engine.js",
   "js/mexen/ui.js",
   "js/mexen/main.js",
+  "dertigen.html",
+  "css/dertigen.css",
+  "js/dertigen/config.js",
+  "js/dertigen/engine.js",
+  "js/dertigen/ui.js",
+  "js/dertigen/main.js",
   "manifest.webmanifest",
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",
