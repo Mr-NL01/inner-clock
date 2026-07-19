@@ -1,7 +1,12 @@
 export const MODES = {
-  short:  { label: "Short",  minS: 0.5,  maxS: 8.0,   decimals: 2 },
-  medium: { label: "Medium", minS: 10.0, maxS: 30.0,  decimals: 1 },
-  long:   { label: "Long",   minS: 30.0, maxS: 120.0, decimals: 0 },
+  short:  { label: "Short",  minS: 0.5, maxS: 5.0,  decimals: 2 },
+  medium: { label: "Long", minS: 5.0, maxS: 10.0, decimals: 1 },
+};
+
+// Bounds a player can drag each mode's custom range to in the settings screen.
+export const RANGE_LIMITS = {
+  short:  { minS: 0.5, maxS: 10.0 },
+  medium: { minS: 5.0, maxS: 120.0 },
 };
 
 export const SETTINGS_DEFAULTS = {

@@ -33,7 +33,20 @@ function wireEvents(els) {
     engine.toggleShowTimeAfterRound();
   });
 
+  els.home.settingsOpenButton.addEventListener("pointerdown", () => engine.openSettings());
+
   els.home.startButton.addEventListener("pointerdown", () => engine.startGame());
+
+  Object.entries(els.settings.ranges).forEach(([mode, refs]) => {
+    refs.minSlider.addEventListener("input", () => {
+      engine.setRangeValue(mode, "min", parseFloat(refs.minSlider.value));
+    });
+    refs.maxSlider.addEventListener("input", () => {
+      engine.setRangeValue(mode, "max", parseFloat(refs.maxSlider.value));
+    });
+  });
+
+  els.settings.backButton.addEventListener("pointerdown", () => engine.closeSettings());
 
   els.intro.continueButton.addEventListener("pointerdown", () => engine.introContinue());
 
@@ -45,7 +58,7 @@ function wireEvents(els) {
 }
 
 // Spacebar mirrors the primary action button for the current screen:
-// Start (HOME/READY), Continue (INTRO/RESULT), Stop (RUNNING), Back to menu (END).
+// Start (HOME/READY), Continue (INTRO/RESULT), Stop (RUNNING), Back to menu (END/SETTINGS).
 function wireKeyboard(els) {
   document.addEventListener("keydown", (e) => {
     if (e.code !== "Space" || e.repeat) return;
@@ -53,6 +66,7 @@ function wireKeyboard(els) {
 
     const screen = engine.getState().screen;
     if (screen === "HOME") engine.startGame();
+    else if (screen === "SETTINGS") engine.closeSettings();
     else if (screen === "INTRO") {
       if (!els.intro.continueButton.disabled) engine.introContinue();
     } else if (screen === "READY") engine.startRound();

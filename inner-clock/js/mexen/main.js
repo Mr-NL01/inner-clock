@@ -69,6 +69,12 @@ function wireEvents(els) {
     if (!input) return;
     engine.setName(Number(input.dataset.index), input.value);
   });
+  els.names.tableBody.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (!e.target.closest("input[data-index]")) return;
+    e.preventDefault();
+    engine.startGame();
+  });
   els.names.startButton.addEventListener("pointerdown", () => engine.startGame());
 
   els.game.throwButton.addEventListener("pointerdown", () => engine.throwDice());

@@ -1,12 +1,58 @@
-import { MODES, SETTINGS_DEFAULTS, DISPLAY } from "./config.js";
+import { MODES, RANGE_LIMITS, SETTINGS_DEFAULTS, DISPLAY } from "./config.js";
 
 // Game state machine. No DOM access here — this file must be testable in
 // plain Node/JS with only `performance.now()` available.
 //
-// Screens: HOME -> INTRO -> READY(p) -> RUNNING(p) -> RESULT(p) | READY(p+1) -> END -> HOME
+// Screens: HOME -> SETTINGS -> HOME
+//       -> INTRO -> READY(p) -> RUNNING(p) -> RESULT(p) | READY(p+1) -> END -> HOME
+
+const RANGES_STORAGE_KEY = "inner-clock-ranges";
 
 function clampPlayers(n) {
   return Math.min(6, Math.max(1, n));
+}
+
+function clampRangeValue(mode, valueS) {
+  const limits = RANGE_LIMITS[mode];
+  return Math.min(limits.maxS, Math.max(limits.minS, valueS));
+}
+
+function defaultRanges() {
+  const ranges = {};
+  Object.keys(MODES).forEach((mode) => {
+    ranges[mode] = { minS: MODES[mode].minS, maxS: MODES[mode].maxS };
+  });
+  return ranges;
+}
+
+// Custom short/medium ranges are the one setting worth remembering between
+// sessions — everything else (mode, players, show-time) intentionally resets.
+function loadStoredRanges() {
+  try {
+    const raw = localStorage.getItem(RANGES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const ranges = {};
+    for (const mode of Object.keys(MODES)) {
+      const r = parsed[mode];
+      if (!r || typeof r.minS !== "number" || typeof r.maxS !== "number") return null;
+      const minS = clampRangeValue(mode, r.minS);
+      const maxS = clampRangeValue(mode, r.maxS);
+      if (minS > maxS) return null;
+      ranges[mode] = { minS, maxS };
+    }
+    return ranges;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredRanges(ranges) {
+  try {
+    localStorage.setItem(RANGES_STORAGE_KEY, JSON.stringify(ranges));
+  } catch {
+    // best-effort persistence only
+  }
 }
 
 function computeLeaderboard(results) {
@@ -39,7 +85,7 @@ function computeLeaderboard(results) {
 export function createEngine() {
   let state = {
     screen: "HOME",
-    settings: { ...SETTINGS_DEFAULTS },
+    settings: { ...SETTINGS_DEFAULTS, ranges: loadStoredRanges() || defaultRanges() },
     target: 0,
     currentPlayer: 1,
     t0: 0,
@@ -53,7 +99,12 @@ export function createEngine() {
   function snapshot() {
     return {
       ...state,
-      settings: { ...state.settings },
+      settings: {
+        ...state.settings,
+        ranges: Object.fromEntries(
+          Object.entries(state.settings.ranges).map(([mode, r]) => [mode, { ...r }])
+        ),
+      },
       results: state.results.map((r) => ({ ...r })),
       leaderboard: state.leaderboard.map((r) => ({ ...r })),
     };
@@ -95,10 +146,39 @@ export function createEngine() {
     emit();
   }
 
+  function openSettings() {
+    if (state.screen !== "HOME") return;
+    state.screen = "SETTINGS";
+    emit();
+  }
+
+  function closeSettings() {
+    if (state.screen !== "SETTINGS") return;
+    state.screen = "HOME";
+    emit();
+  }
+
+  function setRangeValue(mode, bound, valueS) {
+    if (state.screen !== "SETTINGS" || !state.settings.ranges[mode] || Number.isNaN(valueS)) return;
+    const clamped = clampRangeValue(mode, valueS);
+    const range = state.settings.ranges[mode];
+    if (bound === "min") {
+      range.minS = clamped;
+      if (range.minS > range.maxS) range.maxS = range.minS;
+    } else if (bound === "max") {
+      range.maxS = clamped;
+      if (range.maxS < range.minS) range.minS = range.maxS;
+    } else {
+      return;
+    }
+    saveStoredRanges(state.settings.ranges);
+    emit();
+  }
+
   function startGame() {
     if (state.screen !== "HOME") return;
-    const mode = MODES[state.settings.mode];
-    const targetS = Math.random() * (mode.maxS - mode.minS) + mode.minS;
+    const range = state.settings.ranges[state.settings.mode];
+    const targetS = Math.random() * (range.maxS - range.minS) + range.minS;
     state.target = targetS * 1000;
     state.currentPlayer = 1;
     state.results = [];
@@ -168,6 +248,9 @@ export function createEngine() {
     setMode,
     setPlayers,
     toggleShowTimeAfterRound,
+    openSettings,
+    closeSettings,
+    setRangeValue,
     startGame,
     introContinue,
     startRound,

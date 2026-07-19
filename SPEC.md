@@ -46,7 +46,7 @@ rules. If a change to the visuals requires touching engine.js, the split is wron
 ```js
 export const MODES = {
   short:  { label: "Short",  minS: 0.5,  maxS: 8.0,   decimals: 2 },
-  medium: { label: "Medium", minS: 10.0, maxS: 30.0,  decimals: 1 },
+  medium: { label: "Long", minS: 10.0, maxS: 30.0,  decimals: 1 },
   long:   { label: "Long",   minS: 30.0, maxS: 120.0, decimals: 0 },
 };
 

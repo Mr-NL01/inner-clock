@@ -1,5 +1,7 @@
 import { MODES, DISPLAY } from "./config.js";
 
+const RANGE_MODES = ["short", "medium"];
+
 // All DOM reads/writes live here. No game rules — only rendering a given
 // engine state snapshot and exposing element references for main.js to
 // attach listeners to.
@@ -12,7 +14,7 @@ let wakeLock = null;
 // Screen Wake Lock is best-effort: unsupported browsers, desktop, or a
 // denied request must never break the game, so every path is swallowed.
 async function updateWakeLock(screen) {
-  const shouldHold = screen !== "HOME" && screen !== "END";
+  const shouldHold = screen !== "HOME" && screen !== "END" && screen !== "SETTINGS";
   try {
     if (shouldHold && !wakeLock && "wakeLock" in navigator) {
       wakeLock = await navigator.wakeLock.request("screen");
@@ -33,17 +35,33 @@ export function init() {
   els = {
     screens: {
       HOME: document.getElementById("screen-home"),
+      SETTINGS: document.getElementById("screen-settings"),
       INTRO: document.getElementById("screen-intro"),
       GAME: document.getElementById("screen-game"),
       END: document.getElementById("screen-end"),
     },
     home: {
-      modeButtons: Array.from(document.querySelectorAll("#mode-select .segment")),
+      modeButtons: Array.from(document.querySelectorAll("#mode-select .segment[data-mode]")),
+      settingsOpenButton: document.getElementById("settings-open"),
       playerMinus: document.getElementById("player-minus"),
       playerPlus: document.getElementById("player-plus"),
       playerCount: document.getElementById("player-count"),
       showTimeToggle: document.getElementById("show-time-toggle"),
       startButton: document.getElementById("home-start"),
+    },
+    settings: {
+      ranges: Object.fromEntries(
+        RANGE_MODES.map((mode) => [
+          mode,
+          {
+            minSlider: document.getElementById(`${mode}-min`),
+            minValue: document.getElementById(`${mode}-min-value`),
+            maxSlider: document.getElementById(`${mode}-max`),
+            maxValue: document.getElementById(`${mode}-max-value`),
+          },
+        ])
+      ),
+      backButton: document.getElementById("settings-back"),
     },
     intro: {
       number: document.getElementById("intro-number"),
@@ -61,6 +79,7 @@ export function init() {
       resultContinue: document.getElementById("game-result-continue"),
     },
     end: {
+      targetValue: document.getElementById("end-target-value"),
       tableBody: document.querySelector("#end-table tbody"),
       backButton: document.getElementById("end-back"),
     },
@@ -91,6 +110,22 @@ function renderHome(state) {
   els.home.playerCount.textContent = String(state.settings.players);
   els.home.showTimeToggle.classList.toggle("on", state.settings.showTimeAfterRound);
   els.home.showTimeToggle.setAttribute("aria-checked", String(state.settings.showTimeAfterRound));
+}
+
+function formatSeconds(valueS) {
+  const fixed = valueS.toFixed(1);
+  return DISPLAY.decimalSeparator === "," ? fixed.replace(".", ",") : fixed;
+}
+
+function renderSettings(state) {
+  RANGE_MODES.forEach((mode) => {
+    const refs = els.settings.ranges[mode];
+    const range = state.settings.ranges[mode];
+    refs.minSlider.value = String(range.minS);
+    refs.maxSlider.value = String(range.maxS);
+    refs.minValue.textContent = `${formatSeconds(range.minS)}s`;
+    refs.maxValue.textContent = `${formatSeconds(range.maxS)}s`;
+  });
 }
 
 function runIntroAnimation(targetMs, decimals) {
@@ -149,6 +184,7 @@ function renderGame(state) {
 
 function renderEnd(state) {
   const decimals = DISPLAY.endScreenDecimals;
+  els.end.targetValue.textContent = formatNumber(state.target, decimals);
   els.end.tableBody.innerHTML = "";
 
   state.leaderboard.forEach((row) => {
@@ -180,6 +216,7 @@ export function render(state) {
   updateWakeLock(state.screen);
 
   if (state.screen === "HOME") renderHome(state);
+  if (state.screen === "SETTINGS") renderSettings(state);
   if (state.screen === "INTRO") renderIntro(state);
   if (screenName === "GAME") renderGame(state);
   if (state.screen === "END") renderEnd(state);

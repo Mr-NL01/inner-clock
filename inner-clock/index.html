@@ -38,8 +38,8 @@
         <span class="setting-label">Mode</span>
         <div id="mode-select" class="segmented">
           <button type="button" class="segment" data-mode="short">Short</button>
-          <button type="button" class="segment" data-mode="medium">Medium</button>
-          <button type="button" class="segment" data-mode="long">Long</button>
+          <button type="button" class="segment" data-mode="medium">Long</button>
+          <button type="button" id="settings-open" class="segment segment-icon" aria-label="Settings">⚙️</button>
         </div>
       </div>
 
@@ -62,6 +62,43 @@
       <button type="button" id="home-start" class="btn btn-primary btn-large">Start</button>
 
       <p class="credit">Made by Bram Bredewold</p>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen">
+    <div class="settings-content">
+      <h2 class="settings-title">Settings</h2>
+
+      <div class="settings-mode-block">
+        <span class="settings-mode-label">Short</span>
+        <div class="range-row">
+          <span class="range-row-label">Min</span>
+          <input type="range" id="short-min" class="range-slider" min="0.5" max="10" step="0.5" />
+          <span id="short-min-value" class="range-value"></span>
+        </div>
+        <div class="range-row">
+          <span class="range-row-label">Max</span>
+          <input type="range" id="short-max" class="range-slider" min="0.5" max="10" step="0.5" />
+          <span id="short-max-value" class="range-value"></span>
+        </div>
+      </div>
+
+      <div class="settings-mode-block">
+        <span class="settings-mode-label">Long</span>
+        <div class="range-row">
+          <span class="range-row-label">Min</span>
+          <input type="range" id="medium-min" class="range-slider" min="5" max="120" step="0.5" />
+          <span id="medium-min-value" class="range-value"></span>
+        </div>
+        <div class="range-row">
+          <span class="range-row-label">Max</span>
+          <input type="range" id="medium-max" class="range-slider" min="5" max="120" step="0.5" />
+          <span id="medium-max-value" class="range-value"></span>
+        </div>
+      </div>
+
+      <button type="button" id="settings-back" class="btn btn-primary btn-large">Back</button>
     </div>
   </section>
 
@@ -98,6 +135,10 @@
   <section id="screen-end" class="screen">
     <div class="end-content">
       <h2 class="end-title">Results</h2>
+      <div class="end-target">
+        <span class="end-target-label">Target</span>
+        <span id="end-target-value" class="end-target-value"></span>
+      </div>
       <table id="end-table">
         <thead>
           <tr>
