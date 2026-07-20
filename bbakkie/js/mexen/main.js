@@ -62,6 +62,7 @@ function wireEvents(els) {
   els.home.playerPlus.addEventListener("pointerdown", () => {
     engine.setPlayerCount(engine.getState().playerCount + 1);
   });
+  els.home.diceStyleToggle.addEventListener("pointerdown", () => engine.toggleDiceStyle());
   els.home.startButton.addEventListener("pointerdown", () => engine.goToNames());
 
   els.names.tableBody.addEventListener("input", (e) => {

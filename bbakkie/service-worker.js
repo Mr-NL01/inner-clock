@@ -1,4 +1,4 @@
-const CACHE_NAME = "bbakkie-v12";
+const CACHE_NAME = "bbakkie-v14";
 
 const ASSETS = [
   "./",

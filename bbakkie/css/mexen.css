@@ -1,5 +1,56 @@
 /* HOME reuses Inner Clock's shared .home-content / .stepper / .btn styles. */
 
+/* Dice-style toggle: the same pill switch Inner Clock uses (copied here to
+   keep the games independent), flanked by the "Numbers" and "Dice Eyes"
+   labels. Off (grey, thumb left) = Numbers; on (green, thumb right) = pips. */
+
+.dice-style-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.dice-style-label {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.dice-style-label.active {
+  color: var(--text);
+}
+
+.toggle {
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--border);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle .toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: left 0.15s ease;
+}
+
+.toggle.on {
+  background: var(--accent);
+}
+
+.toggle.on .toggle-thumb {
+  left: 25px;
+}
+
 /* NAMES */
 
 .names-content {
@@ -58,15 +109,15 @@
 }
 
 .die {
-  width: 64px;
-  height: 64px;
+  width: 51px;
+  height: 51px;
   border-radius: 12px;
   background: var(--surface);
   border: 2px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -80,6 +131,68 @@
   box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.35);
 }
 
+/* "Dice Eyes" mode — white face with dark pips, matching Dertigen. Only the
+   face changes; the .held ring and roll animation below still apply. The
+   :not(.held) guard lets a held pip die keep its green outline. */
+
+.die.pips {
+  background: #f2f3f5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+
+.die.pips:not(.held) {
+  border-color: transparent;
+}
+
+.die.pips.held {
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.35);
+}
+
+.die.pips .pip {
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.die.pips .pip.on {
+  background: #16181d;
+}
+
+/* Roll animation, ported from Dertigen: a CSS tumble (jitter + rotation)
+   while the face cycles in JS, then a settle bounce on landing. The
+   per-die animationDuration/animationDelay are overridden inline so the
+   two dice fall out of sync. */
+
+@keyframes die-tumble {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  15%  { transform: translate(-5px, 3px) rotate(-14deg); }
+  30%  { transform: translate(4px, -4px) rotate(11deg); }
+  45%  { transform: translate(-3px, -3px) rotate(-8deg); }
+  60%  { transform: translate(4px, 3px) rotate(13deg); }
+  75%  { transform: translate(-4px, 2px) rotate(-9deg); }
+  90%  { transform: translate(2px, -2px) rotate(5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.die.rolling {
+  animation: die-tumble 0.9s ease-in-out infinite;
+}
+
+@keyframes die-settle {
+  0%   { transform: scale(1.16); }
+  55%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+.die.settled {
+  animation: die-settle 0.22s ease-out;
+}
+
 /* Main turn + the sequential throw-off fallback use the full screen height
    (.game-sub), so dice can go up to ~3x the base size and still fit —
    legible from across the table. The 2-player throw-off split screen keeps
@@ -89,7 +202,7 @@
    never overflow the viewport width. Declared on .game-sub (not just .die)
    so #game-turn .btn-throw below can also read it, to match widths. */
 .game-sub {
-  --die-size: min(192px, calc((100vw - 32px) / 2));
+  --die-size: calc(min(192px, calc((100vw - 32px) / 2)) * 0.8);
 }
 
 .game-sub .die {

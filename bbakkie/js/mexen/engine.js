@@ -1,4 +1,4 @@
-import { PLAYER_COUNT, NAME_MAX_LENGTH, RANK_ORDER, HOLDABLE_VALUES } from "./config.js";
+import { PLAYER_COUNT, NAME_MAX_LENGTH, RANK_ORDER, HOLDABLE_VALUES, DICE_STYLE_DEFAULT } from "./config.js";
 
 // Game state machine for Mexen. NO DOM ACCESS — this file must be testable
 // in plain Node/JS. Same subscribe/emit pattern as Inner Clock's engine.
@@ -197,6 +197,7 @@ export function createEngine() {
     round: null, // active/last-finished round bookkeeping; see beginRound()
     popup: null, // { message } | null — doubles announcement, blocks the game
     quitDialogOpen: false,
+    diceStyle: DICE_STYLE_DEFAULT, // "numbers" | "pips" — home-screen preference
   };
 
   // The live turn/throw-off controllers are NOT part of `state`: they carry
@@ -274,6 +275,14 @@ export function createEngine() {
     }
     state.playerCount = clamped;
     state.names = names;
+    emit();
+  }
+
+  // Home-screen only. Persists for the session (not reset by a round or a
+  // return to HOME); quitGame leaves it untouched on purpose.
+  function toggleDiceStyle() {
+    if (state.screen !== "HOME") return;
+    state.diceStyle = state.diceStyle === "pips" ? "numbers" : "pips";
     emit();
   }
 
@@ -506,6 +515,7 @@ export function createEngine() {
     subscribe,
     getState,
     setPlayerCount,
+    toggleDiceStyle,
     goToNames,
     setName,
     startGame,

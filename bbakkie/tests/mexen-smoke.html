@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mexen UI smoke test</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 8px; }
+    #results { white-space: pre-wrap; font-size: 13px; }
+    iframe { border: 1px solid #444; }
+  </style>
+</head>
+<body>
+<!-- Drives the real mexen.html in an iframe. Two passes (reloading between):
+     Numbers mode and Dice Eyes (pips) mode. Verifies the home toggle, the
+     20%-smaller dice, the ported tumble/settle animation, and that in each
+     style the rendered faces match the true dice values behind the score
+     code. Run over CDP in real time (cdp-test.mjs) — virtual time breaks the
+     rAF animation. -->
+<pre id="results">RUNNING</pre>
+<iframe id="game" width="470" height="1000"></iframe>
+
+<script>
+  const lines = [];
+  let failures = 0;
+  function report(ok, label, detail) {
+    if (!ok) failures += 1;
+    lines.push(`${ok ? "ok  " : "FAIL"} - ${label}${detail ? ` (${detail})` : ""}`);
+    document.getElementById("results").textContent = lines.join("\n");
+  }
+  function finish() {
+    lines.push("");
+    lines.push(failures === 0 ? "SMOKE RESULT: ALL PASS" : `SMOKE RESULT: ${failures} FAILURES`);
+    document.getElementById("results").textContent = lines.join("\n");
+  }
+  function tap(el) { el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true })); }
+  function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  const frame = document.getElementById("game");
+  function load(url) {
+    return new Promise((res) => {
+      frame.addEventListener("load", res, { once: true });
+      frame.src = url;
+    });
+  }
+
+  // pipCount / numeral of a die element; returns the face value it displays.
+  function faceValue(die, pips) {
+    if (pips) return die.querySelectorAll(".pip.on").length;
+    const t = die.textContent.trim();
+    return /^[1-6]$/.test(t) ? Number(t) : NaN;
+  }
+
+  async function pass(pips) {
+    const doc = frame.contentDocument;
+    const win = frame.contentWindow;
+
+    report(doc.getElementById("screen-home").classList.contains("active"), `[${pips ? "pips" : "numbers"}] HOME shown`);
+
+    const toggle = doc.getElementById("dice-style-toggle");
+    const labels = Array.from(doc.querySelectorAll(".dice-style-label"));
+    report(labels.map((l) => l.textContent).join("|") === "Numbers|Dice Eyes", "toggle flanked by Numbers & Dice Eyes");
+
+    // Ordering: toggle appears after the player stepper and before Start.
+    const order = Array.from(doc.querySelectorAll("#player-count, #dice-style-toggle, #home-start")).map((e) => e.id);
+    report(order.join(",") === "player-count,dice-style-toggle,home-start", "toggle sits between players and Start", order.join(","));
+
+    // Default state (fresh load) is Numbers: off, "Numbers" label active.
+    report(!toggle.classList.contains("on"), "toggle defaults off (Numbers)");
+    report(toggle.getAttribute("aria-checked") === "false", "aria-checked false by default");
+    const numbersLabel = labels.find((l) => l.dataset.style === "numbers");
+    const pipsLabel = labels.find((l) => l.dataset.style === "pips");
+    report(numbersLabel.classList.contains("active") && !pipsLabel.classList.contains("active"), "Numbers label active by default");
+
+    if (pips) {
+      tap(toggle);
+      await wait(60);
+      report(toggle.classList.contains("on"), "tapping toggle switches to pips (on)");
+      report(toggle.getAttribute("aria-checked") === "true", "aria-checked true after toggle");
+      report(pipsLabel.classList.contains("active") && !numbersLabel.classList.contains("active"), "Dice Eyes label active after toggle");
+    } else {
+      // Prove it's a real toggle: on then back off, leaving Numbers.
+      tap(toggle); await wait(40);
+      report(toggle.classList.contains("on"), "toggle turns on when tapped");
+      tap(toggle); await wait(40);
+      report(!toggle.classList.contains("on"), "toggle turns back off when tapped again");
+    }
+
+    // HOME -> NAMES -> GAME
+    tap(doc.getElementById("home-start"));
+    await wait(90);
+    tap(doc.getElementById("names-start"));
+    await wait(90);
+    report(doc.getElementById("screen-game").classList.contains("active"), "GAME screen shown");
+
+    const die0 = doc.getElementById("game-die-0");
+    const die1 = doc.getElementById("game-die-1");
+
+    // Dice reduced ~20% (192 -> 153.6px in this 470px frame).
+    const w = die0.getBoundingClientRect().width;
+    report(Math.abs(w - 153.6) < 2, "dice reduced ~20% (~154px)", `${w.toFixed(1)}px`);
+
+    // Throw and sample mid-flight: the ported animation runs in both styles.
+    tap(doc.getElementById("game-throw"));
+    await wait(300);
+    report(die0.classList.contains("rolling") && die1.classList.contains("rolling"), "both dice tumble (.rolling) mid-throw");
+    report(win.getComputedStyle(die0).animationName === "die-tumble", "die-tumble animation active");
+
+    // Settle (inspect before any Mex auto-advance at ~1.9s).
+    await wait(1050);
+    report(!die0.classList.contains("rolling") && die0.classList.contains("settled"), "dice settled after landing");
+
+    if (pips) {
+      report(die0.classList.contains("pips") && die1.classList.contains("pips"), "dice have .pips class in Dice Eyes mode");
+      report(die0.querySelectorAll(".pip").length === 9, "pip die has a 3x3 grid (9 pips)");
+      report(die0.textContent.trim() === "", "no numeral text in pip mode");
+      const bg = win.getComputedStyle(die0).backgroundColor;
+      report(bg === "rgb(242, 243, 245)", "pip die has the white Dertigen face", bg);
+    } else {
+      report(!die0.classList.contains("pips") && !die1.classList.contains("pips"), "no .pips class in Numbers mode");
+      report(die0.querySelectorAll(".pip").length === 0, "no pip spans in Numbers mode");
+      report(/^[1-6]$/.test(die0.textContent.trim()), "die shows a 1-6 numeral", die0.textContent.trim());
+    }
+
+    // Cross-check faces against the true dice: the score label reads the code
+    // high*10+low, so the two rendered faces sorted desc must equal it.
+    const scoreText = doc.getElementById("game-score-label").textContent.trim();
+    const f0 = faceValue(die0, pips);
+    const f1 = faceValue(die1, pips);
+    if (/^\d\d$/.test(scoreText)) {
+      const hi = Math.max(f0, f1), lo = Math.min(f0, f1);
+      report(hi * 10 + lo === Number(scoreText), `rendered faces match the score code ${scoreText}`, `faces ${f0},${f1}`);
+    } else {
+      // Mex/Ridder/31 — just confirm both faces are valid 1-6.
+      report(f0 >= 1 && f0 <= 6 && f1 >= 1 && f1 <= 6, `both faces valid (score "${scoreText}")`, `faces ${f0},${f1}`);
+    }
+  }
+
+  (async () => {
+    try {
+      await load("../mexen.html");
+      await pass(false); // Numbers
+      await load("../mexen.html"); // fresh page -> default Numbers again
+      await pass(true); // Dice Eyes (pips)
+      finish();
+    } catch (err) {
+      report(false, "unhandled error", err.message);
+      lines.push(err.stack || "");
+      finish();
+    }
+  })();
+</script>
+</body>
+</html>

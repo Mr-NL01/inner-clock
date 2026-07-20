@@ -30,6 +30,11 @@ export const LABELS = {
   mexFireSuffix: "🔥",
 };
 
+// How the dice faces render: "numbers" (numerals, Mexen's original look) or
+// "pips" (dice eyes, matching Dertigen). A home-screen preference, toggled
+// before starting and kept for the session.
+export const DICE_STYLE_DEFAULT = "numbers";
+
 export const TIMING = {
   resultPauseMs: 900, // "a short beat" before auto-advancing to the next player/screen
   diceAnimationMs: 1000, // dice tumble theater — result is already decided before this plays

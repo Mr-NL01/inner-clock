@@ -22,6 +22,8 @@ export function init() {
       playerMinus: document.getElementById("player-minus"),
       playerPlus: document.getElementById("player-plus"),
       playerCount: document.getElementById("player-count"),
+      diceStyleToggle: document.getElementById("dice-style-toggle"),
+      diceStyleLabels: Array.from(document.querySelectorAll(".dice-style-label")),
       startButton: document.getElementById("home-start"),
     },
     names: {
@@ -104,6 +106,13 @@ function renderHome(state) {
   els.home.playerCount.textContent = String(state.playerCount);
   els.home.playerMinus.disabled = state.playerCount <= PLAYER_COUNT.min;
   els.home.playerPlus.disabled = state.playerCount >= PLAYER_COUNT.max;
+
+  const pips = state.diceStyle === "pips";
+  els.home.diceStyleToggle.classList.toggle("on", pips);
+  els.home.diceStyleToggle.setAttribute("aria-checked", String(pips));
+  els.home.diceStyleLabels.forEach((lbl) => {
+    lbl.classList.toggle("active", lbl.dataset.style === state.diceStyle);
+  });
 }
 
 // Rebuilds the name-input rows. Only called when NAMES is freshly entered
@@ -137,10 +146,52 @@ function nameWithRidder(state, playerIndex) {
   return playerIndex === state.ridder ? `${name} ${LABELS.ridderSuffix}` : name;
 }
 
+// The home-screen dice-style preference, mirrored here from engine state at
+// the top of every render() so the face painters below don't each need it
+// threaded through their signatures. "numbers" | "pips".
+let currentDiceStyle = "numbers";
+
+// 3x3 grid cells 0..8; classic die pip layout per face value (same as
+// Dertigen's).
+const PIP_MAP = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
+
+// Paints a non-null face in the current style. Numerals go in as text; pips
+// build (once) a 3x3 grid of spans and light the ones for the value. Setting
+// textContent clears any stale pip spans when switching back to numerals.
+function paintFace(el, value) {
+  if (currentDiceStyle === "pips") {
+    el.classList.add("pips");
+    if (el.childElementCount !== 9) {
+      el.textContent = "";
+      for (let i = 0; i < 9; i++) {
+        el.appendChild(document.createElement("span")).className = "pip";
+      }
+    }
+    const on = PIP_MAP[value] || [];
+    for (let i = 0; i < 9; i++) el.children[i].classList.toggle("on", on.includes(i));
+  } else {
+    el.classList.remove("pips");
+    el.textContent = String(value);
+  }
+}
+
 function renderDie(el, value, isHeld) {
-  el.textContent = value == null ? "" : String(value);
-  el.classList.toggle("empty", value == null);
+  const empty = value == null;
+  el.classList.toggle("empty", empty);
   el.classList.toggle("held", Boolean(isHeld));
+  if (empty) {
+    el.classList.remove("pips");
+    el.textContent = "";
+  } else {
+    paintFace(el, value);
+  }
 }
 
 // "62", "Mex!", "Ridder!", "31!" — reads only pre-computed engine flags, no
@@ -156,25 +207,36 @@ function scoreDisplayText(turn) {
 }
 
 // Dice results are decided by the engine before this ever runs — this is
-// pure theater, cycling a die's face through random values before locking
-// to the true (already-known) result, the same idea as Inner Clock's intro
-// count-up animating up to a precomputed target.
+// pure theater, the same animation Dertigen uses: CSS handles the physical
+// tumble (randomized per-die duration/phase so the two dice desync), while
+// this cycles the face at a decelerating pace and settles with a bounce,
+// like a real die running out of momentum. Mexen dice show numerals rather
+// than pips, so the face is set via textContent.
 function tumbleDie(el, finalValue, durationMs, onDone) {
-  el.classList.remove("empty");
+  el.classList.remove("empty", "settled");
+  el.classList.add("rolling");
+  el.style.animationDuration = `${(0.8 + Math.random() * 0.3).toFixed(2)}s`;
+  el.style.animationDelay = `${(-Math.random() * 0.4).toFixed(2)}s`;
+
   const start = performance.now();
-  let lastTick = -Infinity;
-  const tickIntervalMs = 90;
+  let nextTick = 0;
+  let interval = 70;
 
   function tick(now) {
     const elapsed = now - start;
     if (elapsed >= durationMs) {
-      el.textContent = String(finalValue);
+      paintFace(el, finalValue);
+      el.classList.remove("rolling");
+      el.style.animationDuration = "";
+      el.style.animationDelay = "";
+      el.classList.add("settled");
       onDone();
       return;
     }
-    if (now - lastTick >= tickIntervalMs) {
-      lastTick = now;
-      el.textContent = String(1 + Math.floor(Math.random() * 6));
+    if (elapsed >= nextTick) {
+      paintFace(el, 1 + Math.floor(Math.random() * 6));
+      interval *= 1.12;
+      nextTick = elapsed + interval;
     }
     requestAnimationFrame(tick);
   }
@@ -257,7 +319,7 @@ function renderNormalTurn(state, onSettled) {
   // rolled index/indices tumble. A die that's being rolled can't
   // simultaneously be held — clear any stale "held" ring left over from a
   // previous throw (e.g. this is the "pick up both dice" throw right after
-  // a hold ended), since tumbleDie only touches textContent.
+  // a hold ended), since tumbleDie only paints the face, not the held ring.
   for (let i = 0; i < 2; i++) {
     if (turn.rolledIndices.includes(i)) {
       dieEls[i].classList.remove("held");
@@ -418,6 +480,7 @@ function renderQuitDialog(state) {
 // timers until then, so nothing appears before the dice have visually
 // landed.
 export function render(state, onSettled = () => {}) {
+  currentDiceStyle = state.diceStyle || "numbers"; // set before any die is painted
   const changedScreen = state.screen !== previousScreen;
   showScreen(state.screen);
   updateWakeLock(state.screen);
